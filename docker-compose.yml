@@ -1,0 +1,16 @@
+  dind:
+    container_name: dind
+    image: jpetazzo/dind
+    expose:
+      - 4242
+    environment:
+      PORT: 4242
+    privileged: true
+
+  jenkins:
+    container_name: jenkins
+    image: ccedric/jenkins:latest
+    links:
+      - dind
+    ports:
+      - 8080:8080

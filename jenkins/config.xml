@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.coravy.hudson.plugins.github.GithubProjectProperty plugin="github@1.17.1">
+      <projectUrl>https://github.com/ccedric/computer-database/</projectUrl>
+      <displayName></displayName>
+    </com.coravy.hudson.plugins.github.GithubProjectProperty>
+  </properties>
+  <scm class="hudson.plugins.git.GitSCM" plugin="git@2.4.2">
+    <configVersion>2</configVersion>
+    <userRemoteConfigs>
+      <hudson.plugins.git.UserRemoteConfig>
+        <url>https://github.com/ccedric/computer-database</url>
+      </hudson.plugins.git.UserRemoteConfig>
+    </userRemoteConfigs>
+    <branches>
+      <hudson.plugins.git.BranchSpec>
+        <name>*/master</name>
+      </hudson.plugins.git.BranchSpec>
+    </branches>
+    <doGenerateSubmoduleConfigurations>false</doGenerateSubmoduleConfigurations>
+    <submoduleCfg class="list"/>
+    <extensions/>
+  </scm>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers>
+    <com.cloudbees.jenkins.GitHubPushTrigger plugin="github@1.17.1">
+      <spec></spec>
+    </com.cloudbees.jenkins.GitHubPushTrigger>
+  </triggers>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>docker pull ccedric/utenv:latest
+
+docker pull ccedric/cdb-mysql:latest
+
+docker pull ccedric/cdb-webapp:latest
+
+if [ -e $(docker ps -aq -f &quot;name=mysql&quot;) ]
+then
+    docker create  --name mysql -e MYSQL_ROOT_PASSWORD=&apos;&apos; -d ccedric/cdb-mysql
+fi
+docker start -a mysql &amp;
+
+sleep 5
+
+
+if [ -e $(docker ps -aq -f &quot;name=utenv&quot;) ]
+then
+    docker create  --name utenv --link mysql ccedric/utenv:latest
+fi
+
+docker cp /var/jenkins_home/jobs/computerDB/workspace/ utenv:/local/git/computerDB
+
+docker start -a utenv
+
+
+docker cp utenv:/local/git/computerDB/target/computerDB.war webapp.war
+
+if [ -e $(docker ps -aq -f &quot;name=webapp&quot;) ]
+then
+    docker create  --name webapp ccedric/cdb-webapp
+fi
+
+docker cp webapp.war webapp:/usr/local/tomcat/webapps/webapp.war
+docker commit webapp ccedric/cdb-webapp:latest
+docker push ccedric/cdb-webapp:latest
+
+bash /glazer-deploy.sh --host 192.168.10.225 --port 65000 --env MYSQL_ROOT_PASSWORD=root ccedric-computer-database-mysql ccedric/cdb-mysql
+bash /glazer-deploy.sh --host 192.168.10.225 --port 65000 --link ccedric-computer-database-mysql:localhost --publish 65309:8080 ccedric-computer-database-webapp ccedric/cdb-webapp
+
+
+
+
+# --filter=&quot;name=&quot; -q</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+
